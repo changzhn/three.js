@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D 地球</title>
+    <style>
+        * {
+            padding: 0;
+            margin: 0;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="webglcanvas"></canvas>
+
+    <script src="./three.min.js"></script>
+    <script src="./stats.min.js"></script>
+    <script>
+
+        class StatsPanel {
+            constructor() {
+                this.initStats();
+            }
+
+            initStats() {
+                const stats = new Stats();
+                stats.setMode(0); // 0: fps 1: ms
+                stats.domElement.style.position = 'fixed';
+                document.body.appendChild(stats.domElement);
+                this.stats = stats;
+            }
+        }
+
+        class Earth3D {
+            constructor(canvas) {
+                this.scene = null;
+                this.camera = null;
+                this.renderer = null;
+                this.stats = null;
+                this.canvas = canvas;
+
+                this.init();
+            }
+
+            async init() {
+                this.initScene();
+                this.initCamera();
+                this.scene.add(this.camera);
+
+                const helper = new THREE.CameraHelper( this.camera );
+                this.scene.add(helper);
+
+                this.initRenderer();
+
+                const mesh = await this.createMesh();
+                this.scene.add(mesh);
+                this.mesh = mesh;
+
+                const axis = this.initAxesHelper();
+                this.scene.add(axis);
+
+                const light = this.initLight();
+                this.scene.add(light);
+
+                this.stats = new StatsPanel().stats;
+
+                this.animate();
+            }
+
+            initScene() {
+                this.scene = new THREE.Scene();
+            }
+
+            initCamera() {
+                this.camera = new THREE.PerspectiveCamera(
+                    60,
+                    window.innerWidth / window.innerHeight,
+                    0.1,
+                    2000
+                );
+                this.camera.position.set(500, 500, 500);
+                this.camera.lookAt(new THREE.Vector3(0, 0, 0));
+            }
+
+            initRenderer() {
+                this.renderer = new THREE.WebGLRenderer({
+                    canvas: this.canvas,
+                    antialias: true, // 是否开启反锯齿
+                    /*
+                    alpha: false,              // true/false 表示是否可以设置背景色透明,
+                    precision: 'highp',        // highp/mediump/lowp 表示着色精度选择,
+                    premultipliedAlpha: false, // true/false 表示是否可以设置像素深度（用来度量图像的分辨率）,
+                    maxLights: 3,              // 最大灯光数,
+                    stencil: false             // false/true 表示是否使用模板字体或图案
+                    */
+                });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+
+            initAxesHelper() {
+                return new THREE.AxisHelper(300);
+            }
+
+            initLight() {
+                const light = new THREE.DirectionalLight(0xffffff);
+                light.position.set(0, 0, 500);
+                const targetObject = new THREE.Object3D();
+                this.scene.add(targetObject);
+                light.target = targetObject;
+                return light;
+            }
+
+            async createMesh() {
+                return new Promise(resolve => {
+                    new THREE.TextureLoader().load('/assets/earth.jpg', texture => {
+                        // raduis widthSegments heightSegments
+                        const geometry = new THREE.SphereGeometry(200, 20, 20);
+                        const material = new THREE.MeshBasicMaterial({
+                            map: texture,
+                            // wireframe: true,
+                        });
+                        const mesh = new THREE.Mesh(geometry, material);
+                        resolve(mesh);
+                    })
+                });
+            }
+
+            animate() {
+                this.stats.update();
+                this.render();
+                this.mesh.rotateY(Math.PI / 8000);
+                requestAnimationFrame(this.animate.bind(this));
+            }
+
+            render() {
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+
+        window.addEventListener('load', () => {
+            const canvas = document.getElementById('webglcanvas');
+            new Earth3D(canvas);
+        });
+
+        window.addEventListener('scroll', function() {
+            var imgs = document.getElementsByTagName('img');
+            Array.from(imgs).forEach(i => i.src = '')
+        })
+
+    </script>
+</body>
+
+</html>
+
